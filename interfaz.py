@@ -4,7 +4,7 @@ from time import strftime
 import webbrowser
 import subprocess
 import sys
-from scraping_tmdb import hacer_scraping, crear_bd_y_cargar
+from webscraping import hacer_scraping, crear_bd_y_cargar
 
 # Colores para cada unos de los botones del menu
 COLOR_FONDO = "#599dd4"
