@@ -229,19 +229,27 @@ def create_dashboard1():
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        dcc.Graph(figure=scatter_fig)
+                        dcc.Graph(id='scatter-graph',figure=scatter_fig)
                     ])
                 ], style=CARD_STYLE)
             ], width=6),
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        dcc.Graph(figure=bar_fig)
+                        dcc.Graph(id='bar-graph', figure=bar_fig),
+                        html.Br(),
+                        dcc.Dropdown(
+                            id='top10-dropdown',
+                            options=[{'label': row['title'], 'value': row['id']} for _, row in top_10.iterrows()],
+                            placeholder='Selecciona una película o serie del Top 10'
+                        ),
+                        html.Div(id='top10-info')
                     ])
                 ], style=CARD_STYLE)
             ], width=6)
         ])
     ])
+
 
 #Crear el dashboard #2
 def create_dashboard2():
@@ -441,6 +449,25 @@ def render_page_content(pathname):
         html.H1("404: Página no encontrada", className="text-danger"),
         html.P("La página que buscas no existe.")
     ])
+
+#Callback para info de top10
+@app.callback(
+    Output('top10-info', 'children'),[Input('top10-dropdown', 'value')])
+def show_top10_info(selected_id):
+    if selected_id is None:
+        return ""
+    # Busca la fila correspondiente en el top 10
+    row = df_combined.loc[df_combined['id'] == selected_id].iloc[0]
+    return dbc.Card([
+        dbc.CardBody([
+            html.H4(row['title']),
+            html.P(f"Tipo: {row['type']}"),
+            html.P(f"Popularidad: {row['popularity']:.2f}"),
+            html.P(f"Rating: {row['vote_average']:.2f}"),
+            html.P(f"Fecha de estreno: {row['release_date']}"),
+            # Agrega aquí más campos si tienes más información en tu DataFrame
+        ])
+    ], style=CARD_STYLE)
 
 # CSS adicional
 app.index_string = '''
