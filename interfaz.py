@@ -6,7 +6,9 @@ import subprocess
 import sys
 from webscraping import hacer_scraping, crear_bd_y_cargar
 
-# Colores para cada unos de los botones del menu
+
+
+# Colores para el fondo de cada uno de los botones que tiene nuestro menu
 COLOR_FONDO = "#0a1a2f"
 COLOR_PRIMARIO = "#14213d"
 COLOR_SECUNDARIO = "#1e3a8a"
@@ -19,8 +21,9 @@ COLOR_BORDE = "#1e293b"
 
 
 
+#Funcion para crear botones
 def crear_boton(parent, text, command, color, hover_color):
-    """Crea un botón con efectos hover"""
+    """Los botones tendran efecto Hover"""
     btn = Button(parent,
                  text=text,
                  command=command,
@@ -47,6 +50,9 @@ def crear_boton(parent, text, command, color, hover_color):
 
 
 
+#Abrir el dashboard. Este proceso tardara unos segundos, hasta que en consola se
+#muestre una IP, al hacer click en ella se abrira el navegador web preferente de la computadora utilizada
+
 
 def abrir_dashboard():
     """Ejecuta el dashboard como un proceso separado"""
@@ -58,14 +64,17 @@ def abrir_dashboard():
 
 
 def abrir_ayuda():
-    """Abre la documentación en el navegador"""
+    """Abre el sitio web de TMDB"""
     webbrowser.open("https://www.themoviedb.org/")
+    
 
 def actualizar_hora():
     """Actualiza la hora en la barra de estado"""
     hora_actual = strftime('%H:%M:%S')
     label_hora.config(text=f"🕒 {hora_actual}")
     label_hora.after(1000, actualizar_hora)
+
+
 
 # Configuración de la ventana principal
 root = Tk()
@@ -74,7 +83,9 @@ root.geometry("650x550")
 root.resizable(True, True)
 root.configure(bg=COLOR_FONDO)
 
-# Fuentes personalizadas
+
+
+# Fuentes utilizadas para el texto que contienen nuestros botones
 try:
     fuente_titulo = font.Font(family="Helvetica", size=20, weight="bold")
     fuente_subtitulo = font.Font(family="Helvetica", size=12, slant="italic")
@@ -92,6 +103,8 @@ except:
 
 main_frame = Frame(root, bg=COLOR_FONDO, padx=30, pady=20)
 main_frame.pack(fill=BOTH, expand=True)
+
+
 
 # Encabezado
 header_frame = Frame(main_frame, bg=COLOR_PRIMARIO, height=100,
@@ -114,6 +127,8 @@ label_subtitle = Label(header_frame,
                        padx=20)
 label_subtitle.pack(side=LEFT, fill=Y)
 
+
+
 # Frame de contenido
 content_frame = Frame(main_frame,
                       bg="#0a1a2f",
@@ -124,7 +139,9 @@ content_frame = Frame(main_frame,
                       relief=RAISED)
 content_frame.pack(fill=BOTH, expand=True)
 
-# Botones
+
+
+# Botones funcionales
 btn_scraping = crear_boton(content_frame,
                           "📊 Obtener Datos de TMDB",
                           hacer_scraping,
@@ -167,6 +184,8 @@ btn_salir = crear_boton(content_frame,
                        "#63171b")
 btn_salir.pack(fill=X, pady=10, ipady=5)
 
+
+
 # Barra de estado
 status_frame = Frame(main_frame, bg=COLOR_PRIMARIO, height=40)
 status_frame.pack(fill=X, side=BOTTOM)
@@ -186,7 +205,9 @@ label_version = Label(status_frame,
                       font=fuente_texto)
 label_version.pack(side=LEFT, padx=20)
 
-# Centrar ventana
+
+
+# Centrar la ventana
 root.eval('tk::PlaceWindow . center')
 
 root.mainloop()
