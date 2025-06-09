@@ -26,7 +26,7 @@ def get_data_from_db():
         return create_sample_data()
 
 def create_sample_data():
-    """Crear datos de ejemplo para pruebas"""
+    """Crear datos de ejemplo para realizar pruebas"""
     np.random.seed(42)
 
     movies_data = {
@@ -56,7 +56,9 @@ def create_sample_data():
 # Obtener datos
 df_combined, df_movies, df_tv = get_data_from_db()
 
-# Estilos CSS personalizados
+
+
+# Estilos CSS
 SIDEBAR_STYLE = {
     "position": "fixed",
     "top": 0,
@@ -108,7 +110,8 @@ sidebar = html.Div([
     ])
 ], style=SIDEBAR_STYLE)
 
-# Función para crear KPI Cards
+
+# Función para crear los KPI Cards
 def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
     return dbc.Card([
         dbc.CardBody([
@@ -128,7 +131,9 @@ def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
         ])
     ], style=CARD_STYLE)
 
-# Página de Inicio
+
+
+# Página de inicio
 def create_home_page():
     return html.Div([
         html.H1("🎬 TMDB Analytics Dashboard", className="mb-4"),
@@ -181,6 +186,7 @@ def create_home_page():
 
 
 
+#Crear dashboard #1
 def create_dashboard1():
     # Gráfico de dispersión popularidad vs rating
     scatter_fig = px.scatter(
