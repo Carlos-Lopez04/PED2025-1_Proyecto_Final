@@ -254,6 +254,7 @@ def create_dashboard1():
 
 
 #Crear el dashboard #2
+
 def create_dashboard2():
     # Gráfico circular de distribución
     type_counts = df_combined['type'].value_counts()
@@ -278,7 +279,10 @@ def create_dashboard2():
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font_color='#1f2937'
+        
     )
+
+
 
 
     #Estadisticas
@@ -320,6 +324,9 @@ def create_dashboard2():
 
 
 
+
+
+
 #Dashboard #3
 def create_dashboard3():
     # Convertir fechas
@@ -334,7 +341,9 @@ def create_dashboard3():
 
 
 
-        
+
+
+  
 
 
 
