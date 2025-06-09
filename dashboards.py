@@ -7,18 +7,14 @@ from datetime import datetime
 import numpy as np
 from sqlalchemy import create_engine
 
-
-
 # Configuración de la app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "TMDB Dashboard"
 
-
-
 # Función para conectar a la base de datos
 def get_data_from_db():
     try:
-        # Cambia los datos de usuario, contraseña y base según corresponda
+        #* Cambia los datos de usuario, contraseña y base según corresponda
         engine = create_engine("mysql+mysqlconnector://root:12345678@localhost/tmdb_db")
         df_combined = pd.read_sql("SELECT * FROM combined_popular ORDER BY popularity DESC", engine)
         df_movies = pd.read_sql("SELECT * FROM movies_popular ORDER BY popularity DESC", engine)
@@ -30,7 +26,7 @@ def get_data_from_db():
         return create_sample_data()
 
 def create_sample_data():
-    """Crear datos de ejemplo para realizar pruebas"""
+    # Crear datos de ejemplo para realizar pruebas
     np.random.seed(42)
 
     movies_data = {
@@ -57,13 +53,8 @@ def create_sample_data():
 
     return df_combined, df_movies, df_tv
 
-
-
 # Obtener los datos
 df_combined, df_movies, df_tv = get_data_from_db()
-
-
-
 
 # Estilos CSS
 SIDEBAR_STYLE = {
@@ -78,14 +69,12 @@ SIDEBAR_STYLE = {
     "box-shadow": "2px 0 10px rgba(0,0,0,0.1)"
 }
 
-
 CONTENT_STYLE = {
     "margin-left": "18rem",
     "margin-right": "2rem",
     "padding": "2rem 1rem",
     "background-color": "#f8f9fa"
 }
-
 
 CARD_STYLE = {
     "background": "white",
@@ -94,8 +83,6 @@ CARD_STYLE = {
     "margin-bottom": "20px",
     "border": "none"
 }
-
-
 
 # Componente del Sidebar
 sidebar = html.Div([
@@ -117,11 +104,9 @@ sidebar = html.Div([
     html.Div([
         html.P("💡 Dashboard Mejorado", className="text-center text-white-50 small"),
         html.P(f"Última actualización: {datetime.now().strftime('%d/%m/%Y')}",
-               className="text-center text-white-50 small")
+            className="text-center text-white-50 small")
     ])
 ], style=SIDEBAR_STYLE)
-
-
 
 # Función para crear los KPI Cards
 def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
@@ -142,9 +127,6 @@ def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
             ], className="d-flex justify-content-between align-items-start")
         ])
     ], style=CARD_STYLE)
-
-
-
 
 # Página de inicio
 def create_home_page():
@@ -173,7 +155,7 @@ def create_home_page():
                     dbc.CardHeader("📊 Resumen General"),
                     dbc.CardBody([
                         html.P("Este dashboard te permite analizar datos de películas y series de TMDB.",
-                               className="mb-3"),
+                            className="mb-3"),
                         html.Ul([
                             html.Li("Dashboard 1: Análisis de popularidad y ratings"),
                             html.Li("Dashboard 2: Comparativa entre películas y series"),
@@ -188,7 +170,7 @@ def create_home_page():
                     dbc.CardBody([
                         html.Div([
                             html.P(f"{i + 1}. {row['title'][:30]}{'...' if len(row['title']) > 30 else ''}",
-                                   className="mb-1 small")
+                                className="mb-1 small")
                             for i, (_, row) in enumerate(df_combined.head(5).iterrows())
                         ])
                     ])
@@ -197,10 +179,9 @@ def create_home_page():
         ])
     ])
 
-
-
 #Crear dashboard #1
 def create_dashboard1():
+    
     # Gráfico de dispersión popularidad vs rating
     scatter_fig = px.scatter(
         df_combined, x='vote_average', y='popularity',
@@ -229,8 +210,6 @@ def create_dashboard1():
         yaxis={'categoryorder': 'total ascending'}
     )
 
-
-    
     return html.Div([
         html.H1("📊 Dashboard 1 - Análisis de Popularidad", className="mb-4"),
         dbc.Row([
@@ -264,12 +243,9 @@ def create_dashboard1():
         ])
     ])
 
-
-
-
-
 #Crear el dashboard #2
 def create_dashboard2():
+    
     # Gráfico circular de distribución
     type_counts = df_combined['type'].value_counts()
     pie_fig = px.pie(
@@ -295,9 +271,6 @@ def create_dashboard2():
         font_color='#1f2937'
         
     )
-
-
-
 
     #Estadisticas
     movie_stats = df_movies['vote_average'].describe()
@@ -336,11 +309,6 @@ def create_dashboard2():
         ])
     ])
 
-
-
-
-
-
 #Dashboard #3
 def create_dashboard3():
     # Convertir fechas
@@ -351,14 +319,3 @@ def create_dashboard3():
     yearly_data = df_combined.groupby(['year', 'type']).agg({
         'vote_average': 'mean',
         'popularity': 'mean'
-
-
-
-
-
-
-  
-
-
-
-   
