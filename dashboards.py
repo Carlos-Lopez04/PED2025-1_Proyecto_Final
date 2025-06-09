@@ -196,11 +196,11 @@ def create_dashboard1():
         font_color='#1f2937'
     )
 
-    # Gráfico de barras con el top 10 de pelis
+    # Gráfico de barras con el top 10 de Series
     top_10 = df_combined.head(10)
     bar_fig = px.bar(
         top_10, x='popularity', y='title', orientation='h',
-        color='type', title="Top 10 Más Populares",
+        color='type', title="Top 10 De Las Series Más Populares",
         color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
     )
     bar_fig.update_layout(
