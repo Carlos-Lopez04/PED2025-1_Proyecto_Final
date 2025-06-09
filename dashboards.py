@@ -160,3 +160,171 @@ def create_home_page():
                             html.Li("Dashboard 1: Análisis de popularidad y ratings"),
                             html.Li("Dashboard 2: Comparativa entre películas y series"),
                             html.Li("Dashboard 3: Tendencias temporales y evolución")
+                        ])
+                    ])
+                ], style=CARD_STYLE)
+            ], width=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("🎯 Top 5 Más Populares"),
+                    dbc.CardBody([
+                        html.Div([
+                            html.P(f"{i + 1}. {row['title'][:30]}{'...' if len(row['title']) > 30 else ''}",
+                                   className="mb-1 small")
+                            for i, (_, row) in enumerate(df_combined.head(5).iterrows())
+                        ])
+                    ])
+                ], style=CARD_STYLE)
+            ], width=4)
+        ])
+    ])
+
+
+
+def create_dashboard1():
+    # Gráfico de dispersión popularidad vs rating
+    scatter_fig = px.scatter(
+        df_combined, x='vote_average', y='popularity',
+        color='type', size='popularity',
+        title="Popularidad vs Rating",
+        labels={'vote_average': 'Rating Promedio', 'popularity': 'Popularidad'},
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+    )
+    scatter_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    # Gráfico de barras con el top 10 de pelis
+    top_10 = df_combined.head(10)
+    bar_fig = px.bar(
+        top_10, x='popularity', y='title', orientation='h',
+        color='type', title="Top 10 Más Populares",
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+    )
+    bar_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937',
+        yaxis={'categoryorder': 'total ascending'}
+    )
+
+
+    
+    return html.Div([
+        html.H1("📊 Dashboard 1 - Análisis de Popularidad", className="mb-4"),
+        dbc.Row([
+            dbc.Col([
+                create_kpi_card("Movies", f"{len(df_movies)}", "Total películas", "#6366f1", "🎬")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("TV Shows", f"{len(df_tv)}", "Total series", "#10b981", "📺")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("Avg Rating", f"{df_combined['vote_average'].mean():.1f}", "Rating promedio", "#f59e0b",
+                                "⭐")
+            ], width=4),
+        ], className="mb-4"),
+
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=scatter_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=bar_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=6)
+        ])
+    ])
+
+
+
+#Crear el dashboard #2
+def create_dashboard2():
+    # Gráfico circular de distribución
+    type_counts = df_combined['type'].value_counts()
+    pie_fig = px.pie(
+        values=type_counts.values, names=type_counts.index,
+        title="Distribución Movies vs TV Shows",
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+    )
+    pie_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    # Box plot de ratings por tipo
+    box_fig = px.box(
+        df_combined, x='type', y='vote_average',
+        color='type', title="Distribución de Ratings por Tipo",
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+    )
+    box_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+
+    #Estadisticas
+    movie_stats = df_movies['vote_average'].describe()
+    tv_stats = df_tv['vote_average'].describe()
+
+    return html.Div([
+        html.H1("📈 Dashboard 2 - Comparativa Movies vs TV", className="mb-4"),
+        dbc.Row([
+            dbc.Col([
+                create_kpi_card("Movies Avg", f"{movie_stats['mean']:.1f}", "Rating promedio movies", "#6366f1", "🎬")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("TV Avg", f"{tv_stats['mean']:.1f}", "Rating promedio TV", "#10b981", "📺")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("Diferencia", f"{abs(movie_stats['mean'] - tv_stats['mean']):.1f}",
+                                "Diferencia promedio", "#f59e0b", "📊")
+            ], width=4),
+        ], className="mb-4"),
+
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=pie_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=box_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=6)
+        ])
+    ])
+
+
+
+#Dashboard #3
+def create_dashboard3():
+    # Convertir fechas
+    df_combined['release_date'] = pd.to_datetime(df_combined['release_date'])
+    df_combined['year'] = df_combined['release_date'].dt.year
+
+    # Tendencia por año
+    yearly_data = df_combined.groupby(['year', 'type']).agg({
+        'vote_average': 'mean',
+        'popularity': 'mean'
+
+
+
+   
