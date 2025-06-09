@@ -7,9 +7,13 @@ from datetime import datetime
 import numpy as np
 from sqlalchemy import create_engine
 
+
+
 # Configuración de la app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "TMDB Dashboard"
+
+
 
 # Función para conectar a la base de datos
 def get_data_from_db():
@@ -53,8 +57,11 @@ def create_sample_data():
 
     return df_combined, df_movies, df_tv
 
-# Obtener datos
+
+
+# Obtener los datos
 df_combined, df_movies, df_tv = get_data_from_db()
+
 
 
 
@@ -71,12 +78,14 @@ SIDEBAR_STYLE = {
     "box-shadow": "2px 0 10px rgba(0,0,0,0.1)"
 }
 
+
 CONTENT_STYLE = {
     "margin-left": "18rem",
     "margin-right": "2rem",
     "padding": "2rem 1rem",
     "background-color": "#f8f9fa"
 }
+
 
 CARD_STYLE = {
     "background": "white",
@@ -85,6 +94,8 @@ CARD_STYLE = {
     "margin-bottom": "20px",
     "border": "none"
 }
+
+
 
 # Componente del Sidebar
 sidebar = html.Div([
@@ -111,6 +122,7 @@ sidebar = html.Div([
 ], style=SIDEBAR_STYLE)
 
 
+
 # Función para crear los KPI Cards
 def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
     return dbc.Card([
@@ -130,6 +142,7 @@ def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
             ], className="d-flex justify-content-between align-items-start")
         ])
     ], style=CARD_STYLE)
+
 
 
 
@@ -253,8 +266,9 @@ def create_dashboard1():
 
 
 
-#Crear el dashboard #2
 
+
+#Crear el dashboard #2
 def create_dashboard2():
     # Gráfico circular de distribución
     type_counts = df_combined['type'].value_counts()
