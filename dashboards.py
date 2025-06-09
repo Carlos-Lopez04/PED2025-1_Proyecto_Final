@@ -158,3 +158,5 @@ def create_home_page():
                                className="mb-3"),
                         html.Ul([
                             html.Li("Dashboard 1: Análisis de popularidad y ratings"),
+                            html.Li("Dashboard 2: Comparativa entre películas y series"),
+                            html.Li("Dashboard 3: Tendencias temporales y evolución")
