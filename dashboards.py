@@ -8,7 +8,7 @@ import numpy as np
 from sqlalchemy import create_engine
 
 # Configuración de la app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
 app.title = "TMDB Dashboard"
 
 # Función para conectar a la base de datos
@@ -179,9 +179,7 @@ def create_home_page():
         ])
     ])
 
-#Crear dashboard #1
 def create_dashboard1():
-    
     # Gráfico de dispersión popularidad vs rating
     scatter_fig = px.scatter(
         df_combined, x='vote_average', y='popularity',
@@ -209,6 +207,7 @@ def create_dashboard1():
         font_color='#1f2937',
         yaxis={'categoryorder': 'total ascending'}
     )
+    print(top_10)
 
     return html.Div([
         html.H1("📊 Dashboard 1 - Análisis de Popularidad", className="mb-4"),
@@ -229,7 +228,7 @@ def create_dashboard1():
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        dcc.Graph(id='scatter-graph',figure=scatter_fig)
+                        dcc.Graph(id='scatter-graph', figure=scatter_fig)
                     ])
                 ], style=CARD_STYLE)
             ], width=6),
@@ -237,13 +236,14 @@ def create_dashboard1():
                 dbc.Card([
                     dbc.CardBody([
                         dcc.Graph(id='bar-graph', figure=bar_fig),
-                        html.Br(),
+                        html.H5("Top 10 Más Populares", className="mb-3"),
+                        html.P("Selecciona una película o serie para ver más información:", className="small"),
                         dcc.Dropdown(
                             id='top10-dropdown',
                             options=[{'label': row['title'], 'value': row['id']} for _, row in top_10.iterrows()],
                             placeholder='Selecciona una película o serie del Top 10'
                         ),
-                        html.Div(id='top10-info')
+                        html.Div(id='top10-info', className="mt-3")
                     ])
                 ], style=CARD_STYLE)
             ], width=6)
@@ -456,8 +456,11 @@ def render_page_content(pathname):
 def show_top10_info(selected_id):
     if selected_id is None:
         return ""
-    # Busca la fila correspondiente en el top 10
-    row = df_combined.loc[df_combined['id'] == selected_id].iloc[0]
+    top_10 = df_combined.head(10)
+    row = top_10[top_10['id'] == selected_id]
+    if row.empty:
+        return html.P("No se encontró información.")
+    row = row.iloc[0]
     return dbc.Card([
         dbc.CardBody([
             html.H4(row['title']),
@@ -465,7 +468,6 @@ def show_top10_info(selected_id):
             html.P(f"Popularidad: {row['popularity']:.2f}"),
             html.P(f"Rating: {row['vote_average']:.2f}"),
             html.P(f"Fecha de estreno: {row['release_date']}"),
-            # Agrega aquí más campos si tienes más información en tu DataFrame
         ])
     ], style=CARD_STYLE)
 
