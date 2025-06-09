@@ -157,3 +157,4 @@ def create_home_page():
                         html.P("Este dashboard te permite analizar datos de películas y series de TMDB.",
                                className="mb-3"),
                         html.Ul([
+                            html.Li("Dashboard 1: Análisis de popularidad y ratings"),
