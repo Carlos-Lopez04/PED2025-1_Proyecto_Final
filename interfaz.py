@@ -190,3 +190,12 @@ label_version.pack(side=LEFT, padx=20)
 root.eval('tk::PlaceWindow . center')
 
 root.mainloop()
+
+
+
+
+
+
+
+
+
