@@ -315,7 +315,166 @@ def create_dashboard3():
     df_combined['release_date'] = pd.to_datetime(df_combined['release_date'])
     df_combined['year'] = df_combined['release_date'].dt.year
 
-    # Tendencia por año
+ # Tendencia por año
     yearly_data = df_combined.groupby(['year', 'type']).agg({
         'vote_average': 'mean',
         'popularity': 'mean'
+    }).reset_index()
+
+    line_fig = px.line(
+        yearly_data, x='year', y='vote_average', color='type',
+        title="Evolución del Rating Promedio por Año",
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+    )
+    line_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    # Histograma de ratings
+    hist_fig = px.histogram(
+        df_combined, x='vote_average', color='type',
+        title="Distribución de Ratings",
+        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'},
+        opacity=0.7
+    )
+    hist_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    return html.Div([
+        html.H1("🎭 Dashboard 3 - Tendencias Temporales", className="mb-4"),
+        dbc.Row([
+            dbc.Col([
+                create_kpi_card("Años", f"{df_combined['year'].nunique()}", "Años cubiertos", "#6366f1", "📅")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("Mejor Año", f"{yearly_data.loc[yearly_data['vote_average'].idxmax(), 'year']:.0f}",
+                                "Año con mejor rating", "#10b981", "🏆")
+            ], width=4),
+            dbc.Col([
+                create_kpi_card("Rating Max", f"{df_combined['vote_average'].max():.1f}", "Rating más alto", "#f59e0b",
+                                "⭐")
+            ], width=4),
+        ], className="mb-4"),
+
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=line_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(figure=hist_fig)
+                    ])
+                ], style=CARD_STYLE)
+            ], width=4)
+        ])
+    ])
+
+# Página de Contacto
+def create_contact_page():
+    return html.Div([
+        html.H1("📧 Contáctanos", className="mb-4"),
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("📬 Información de Contacto"),
+                    dbc.CardBody([
+                        html.H5("¿Tienes preguntas sobre este dashboard?", className="mb-3"),
+                        html.P("Este dashboard fue creado usando datos de TMDB API.", className="mb-3"),
+                        html.Hr(),
+                        html.H6("🔧 Tecnologías utilizadas:"),
+                        html.Ul([
+                            html.Li("Python + Dash"),
+                            html.Li("Plotly para visualizaciones"),
+                            html.Li("MySQL para base de datos"),
+                            html.Li("Bootstrap para estilos")
+                        ]),
+                        html.Hr(),
+                        html.P("📊 Dashboard creado para análisis de datos de entretenimiento", className="text-muted")
+                    ])
+                ], style=CARD_STYLE)
+            ], width=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("📈 Estadísticas del Sistema"),
+                    dbc.CardBody([
+                        html.P(f"🎬 Movies: {len(df_movies)}", className="mb-2"),
+                        html.P(f"📺 TV Shows: {len(df_tv)}", className="mb-2"),
+                        html.P(f"📊 Total registros: {len(df_combined)}", className="mb-2"),
+                        html.P(f"📅 Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M')}", className="mb-2")
+                    ])
+                ], style=CARD_STYLE)
+            ], width=4)
+        ])
+    ])
+
+# Layout principal
+app.layout = html.Div([
+    dcc.Location(id="url"),
+    sidebar,
+    html.Div(id="page-content", style=CONTENT_STYLE)
+])
+
+# Callback para navegación
+@app.callback(Output("page-content", "children"), [Input("url", "pathname")])
+def render_page_content(pathname):
+    if pathname == "/":
+        return create_home_page()
+    elif pathname == "/dashboard1":
+        return create_dashboard1()
+    elif pathname == "/dashboard2":
+        return create_dashboard2()
+    elif pathname == "/dashboard3":
+        return create_dashboard3()
+    elif pathname == "/contacto":
+        return create_contact_page()
+    return html.Div([
+        html.H1("404: Página no encontrada", className="text-danger"),
+        html.P("La página que buscas no existe.")
+    ])
+
+# CSS adicional
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            .nav-link:hover {
+                background-color: rgba(255,255,255,0.1) !important;
+                transform: translateX(5px);
+                transition: all 0.3s ease;
+            }
+            .nav-link.active {
+                background-color: rgba(255,255,255,0.2) !important;
+            }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
+if __name__ == "__main__":
+    app.run(debug=True, host='127.0.0.1', port=8050)
