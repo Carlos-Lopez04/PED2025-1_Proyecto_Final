@@ -1,32 +1,33 @@
-import dash
-from dash import dcc, html, Input, Output, callback_context
-import dash_bootstrap_components as dbc
-import plotly.express as px
-import plotly.graph_objects as go
-import pandas as pd
-from datetime import datetime
-import numpy as np
-from sqlalchemy import create_engine
+from dash import dash, dcc, html, Input, Output  # Componentes principales de Dash
+import dash_bootstrap_components as dbc  # Componentes de Bootstrap para Dash
+import plotly.express as px  # Para crear gráficos interactivos
+import pandas as pd  # Para manejo de datos
+from datetime import datetime  # Para manejo de fechas
+import numpy as np  # Para operaciones numéricas
+from sqlalchemy import create_engine  # Para conexión a bases de datos SQL
 
-# Configuración de la app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
-app.title = "TMDB Dashboard Completo"
+#* Configuración inicial de la aplicación Dash
+app = dash.Dash(
+    __name__, 
+    external_stylesheets=[dbc.themes.BOOTSTRAP],  # Usa el tema Bootstrap
+    suppress_callback_exceptions=True  # Evita advertencias de callbacks
+)
+app.title = "TMDB Dashboard Completo"  # Título que aparece en el navegador
 
-
-# Función para conectar a la base de datos y obtener TODOS los datos
+#* Función para obtener datos de la base de datos
 def get_all_data_from_db():
     try:
-        engine = create_engine("mysql+mysqlconnector://root:12345678@localhost/tmdb_db")
+        #Todo Conexión a la base de datos MySQL (cambiar User, Password y Host)
+        engine = create_engine("mysql+mysqlconnector://root:141804@127.0.0.1/tmdb_db")
 
-        # Obtener todas las tablas
+        # Consultas SQL para obtener datos de diferentes tablas
         df_combined = pd.read_sql("SELECT * FROM combined_popular ORDER BY popularity DESC", engine)
         df_movies_popular = pd.read_sql("SELECT * FROM movies_popular ORDER BY popularity DESC", engine)
-        df_movies_top_rated = pd.read_sql("SELECT * FROM top_rated_movies ORDER BY vote_average DESC",
-                                          engine) if table_exists(engine, 'top_rated_movies') else pd.DataFrame()
+        df_movies_top_rated = pd.read_sql("SELECT * FROM top_rated_movies ORDER BY vote_average DESC", engine) if table_exists(engine, 'top_rated_movies') else pd.DataFrame()
         df_tv = pd.read_sql("SELECT * FROM tv_popular ORDER BY popularity DESC", engine)
         df_genres = pd.read_sql("SELECT * FROM genres", engine) if table_exists(engine, 'genres') else pd.DataFrame()
 
-        # Obtener datos con géneros (JOIN)
+        # Consulta más compleja que une tablas para obtener géneros
         df_with_genres = pd.read_sql("""
             SELECT c.*, GROUP_CONCAT(g.genre_name) as genres
             FROM combined_popular c
@@ -38,11 +39,13 @@ def get_all_data_from_db():
 
         return df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres
 
+    # Si hay error, crea datos de ejemplo
     except Exception as e:
         print(f"Error conectando a BD: {e}")
+
         return create_sample_data()
 
-
+#* Función auxiliar para verificar si una tabla existe en la base de datos
 def table_exists(engine, table_name):
     try:
         result = engine.execute(f"SHOW TABLES LIKE '{table_name}'")
@@ -50,12 +53,11 @@ def table_exists(engine, table_name):
     except:
         return False
 
-
+#* Función para crear datos de ejemplo si no se puede conectar a la base de datos
 def create_sample_data():
-    # Datos de ejemplo mejorados
-    np.random.seed(42)
+    np.random.seed(42)  # Para reproducibilidad
 
-    # Movies populares
+    # Datos de ejemplo para películas populares
     movies_popular_data = {
         'id': range(1, 51),
         'title': [f'Popular Movie {i}' for i in range(1, 51)],
@@ -66,7 +68,7 @@ def create_sample_data():
         'type': ['movie'] * 50
     }
 
-    # Movies top rated
+    # Datos de ejemplo para películas mejor valoradas
     movies_top_data = {
         'id': range(101, 151),
         'title': [f'Top Rated Movie {i}' for i in range(1, 51)],
@@ -77,7 +79,7 @@ def create_sample_data():
         'type': ['movie'] * 50
     }
 
-    # TV Shows
+    # Datos de ejemplo para series de TV
     tv_data = {
         'id': range(201, 251),
         'title': [f'TV Show {i}' for i in range(1, 51)],
@@ -88,13 +90,13 @@ def create_sample_data():
         'type': ['tv'] * 50
     }
 
-    # Géneros
+    # Datos de ejemplo para géneros
     genres_data = {
         'genre_id': [28, 12, 16, 35, 80, 18, 14, 27, 10749, 878],
-        'genre_name': ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Drama', 'Fantasy', 'Horror', 'Romance',
-                       'Sci-Fi']
+        'genre_name': ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Drama', 'Fantasy', 'Horror', 'Romance', 'Sci-Fi']
     }
 
+    # Crea DataFrames con los datos de ejemplo
     df_movies_popular = pd.DataFrame(movies_popular_data)
     df_movies_top_rated = pd.DataFrame(movies_top_data)
     df_tv = pd.DataFrame(tv_data)
@@ -106,11 +108,10 @@ def create_sample_data():
 
     return df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres
 
-
-# Obtener todos los datos
+#* Obtener todos los datos
 df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres = get_all_data_from_db()
 
-# Estilos CSS
+#* Estilos CSS para la aplicación
 SIDEBAR_STYLE = {
     "position": "fixed",
     "top": 0,
@@ -138,7 +139,7 @@ CARD_STYLE = {
     "border": "none"
 }
 
-# Componente del Sidebar
+#* Componente del sidebar (menú lateral)
 sidebar = html.Div([
     html.H2("🎬 TMDB", className="display-6 text-center mb-4"),
     html.Hr(style={"border-color": "rgba(255,255,255,0.3)"}),
@@ -158,12 +159,11 @@ sidebar = html.Div([
     html.Div([
         html.P("💡 Dashboard Completo", className="text-center text-white-50 small"),
         html.P(f"Última actualización: {datetime.now().strftime('%d/%m/%Y')}",
-               className="text-center text-white-50 small")
+            className="text-center text-white-50 small")
     ])
 ], style=SIDEBAR_STYLE)
 
-
-# Función para crear los KPI Cards
+#* Función para crear tarjetas de KPI (Indicadores Clave de Rendimiento)
 def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
     return dbc.Card([
         dbc.CardBody([
@@ -183,8 +183,7 @@ def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
         ])
     ], style=CARD_STYLE)
 
-
-# Página de inicio
+#* Página de inicio
 def create_home_page():
     return html.Div([
         html.H1("🎬 TMDB Analytics Dashboard Completo", className="mb-4"),
@@ -247,8 +246,7 @@ def create_home_page():
         ])
     ])
 
-
-# Dashboard 1 Completo e Interactivo
+#* Dashboard 1 - Completo e interactivo
 def create_dashboard1():
     # Obtener años únicos para el filtro
     all_years = sorted(df_combined['release_year'].dropna().unique()) if 'release_year' in df_combined.columns else [
@@ -257,7 +255,7 @@ def create_dashboard1():
     return html.Div([
         html.H1("📊 Dashboard Completo - Análisis Interactivo", className="mb-4"),
 
-        # KPIs dinámicos
+        # Fila de KPIs
         dbc.Row([
             dbc.Col([
                 create_kpi_card("Movies Populares", f"{len(df_movies_popular)}", "Películas populares", "#6366f1", "🎬")
@@ -273,7 +271,7 @@ def create_dashboard1():
             ], width=3),
         ], className="mb-4"),
 
-        # Controles interactivos
+        # Fila de controles interactivos
         dbc.Row([
             dbc.Col([
                 dbc.Card([
@@ -310,7 +308,7 @@ def create_dashboard1():
             ], width=12)
         ], className="mb-4"),
 
-        # Gráficos principales
+        # Fila de gráficos principales
         dbc.Row([
             dbc.Col([
                 dbc.Card([
@@ -363,19 +361,19 @@ def create_dashboard1():
         ])
     ])
 
-
-# Callbacks para interactividad
+#* Callback para actualizar los gráficos según los filtros
 @app.callback(
     [Output('interactive-scatter-plot', 'figure'),
-     Output('genre-distribution', 'figure'),
-     Output('top-content-bar', 'figure'),
-     Output('yearly-stats', 'figure'),
-     Output('detailed-table', 'children')],
+    Output('genre-distribution', 'figure'),
+    Output('top-content-bar', 'figure'),
+    Output('yearly-stats', 'figure'),
+    Output('detailed-table', 'children')],
     [Input('content-type-filter', 'value'),
-     Input('year-filter', 'value')]
+    Input('year-filter', 'value')]
 )
+
+#* Filtra datos según el tipo de contenido seleccionado
 def update_dashboard(content_type, year_filter):
-    # Filtrar datos según selección
     if content_type == 'all':
         filtered_data = df_combined.copy()
         color_col = 'type'
@@ -397,11 +395,11 @@ def update_dashboard(content_type, year_filter):
         color_col = 'type'
         title_suffix = "Todo el Contenido"
 
-    # Filtrar por año
+    # Aplicar filtro por año si se seleccionó uno específico
     if year_filter != 'all' and 'release_year' in filtered_data.columns:
         filtered_data = filtered_data[filtered_data['release_year'] == year_filter]
 
-    # Gráfico de dispersión
+    # Crear gráfico de dispersión (scatter plot)
     if color_col and color_col in filtered_data.columns:
         scatter_fig = px.scatter(
             filtered_data.head(100), x='vote_average', y='popularity',
@@ -425,7 +423,7 @@ def update_dashboard(content_type, year_filter):
         font_color='#1f2937'
     )
 
-    # Gráfico de géneros (simulado si no hay datos reales)
+    # Crear gráfico de distribución por géneros
     if not df_genres.empty and 'genres' in df_with_genres.columns:
         # Procesar géneros reales
         genre_counts = {}
@@ -453,7 +451,7 @@ def update_dashboard(content_type, year_filter):
         font_color='#1f2937'
     )
 
-    # Top 15 contenido
+    # Crear gráfico de barras para el top 15 de contenido
     top_15 = filtered_data.nlargest(15, 'popularity')
     bar_fig = px.bar(
         top_15, x='popularity', y='title', orientation='h',
@@ -468,7 +466,7 @@ def update_dashboard(content_type, year_filter):
         yaxis={'categoryorder': 'total ascending'}
     )
 
-    # Estadísticas por año
+    # Crear gráfico de tendencias por año
     if 'release_year' in filtered_data.columns:
         yearly_data = filtered_data.groupby('release_year').agg({
             'vote_average': 'mean',
@@ -493,7 +491,7 @@ def update_dashboard(content_type, year_filter):
         font_color='#1f2937'
     )
 
-    # Tabla detallada
+    # Crear tabla detallada con los datos filtrados
     table_data = filtered_data.head(20)
     if not table_data.empty:
         table = dbc.Table.from_dataframe(
@@ -505,16 +503,14 @@ def update_dashboard(content_type, year_filter):
 
     return scatter_fig, genre_fig, bar_fig, yearly_fig, table
 
-
-# Layout principal
+#* Layout principal de la aplicación
 app.layout = html.Div([
-    dcc.Location(id="url"),
-    sidebar,
-    html.Div(id="page-content", style=CONTENT_STYLE)
+    dcc.Location(id="url"),  # Componente para manejar la URL
+    sidebar,  # Menú lateral
+    html.Div(id="page-content", style=CONTENT_STYLE)  # Contenido principal
 ])
 
-
-# Callback para navegación
+#* Callback para cambiar entre páginas según la URL
 @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
     if pathname == "/":
@@ -522,18 +518,19 @@ def render_page_content(pathname):
     elif pathname == "/dashboard1":
         return create_dashboard1()
     elif pathname == "/dashboard2":
-        return create_dashboard2()  # Mantener el dashboard 2 original
+        return create_dashboard2()
     elif pathname == "/dashboard3":
-        return create_dashboard3()  # Mantener el dashboard 3 original
+        return create_dashboard3()
     elif pathname == "/contacto":
         return create_contact_page()
+    
+    # Página 404 si la URL no coincide
     return html.Div([
         html.H1("404: Página no encontrada", className="text-danger"),
         html.P("La página que buscas no existe.")
     ])
 
-
-# Funciones de los otros dashboards (mantener las originales)
+#* Dashboard 2 - Comparativa entre películas y series
 def create_dashboard2():
     # Gráfico circular de distribución
     type_counts = df_combined['type'].value_counts()
@@ -560,7 +557,7 @@ def create_dashboard2():
         font_color='#1f2937'
     )
 
-    # Estadísticas
+    # Estadísticas descriptivas
     movie_stats = df_movies_popular['vote_average'].describe()
     tv_stats = df_tv['vote_average'].describe()
 
@@ -597,18 +594,19 @@ def create_dashboard2():
         ])
     ])
 
-
+#* Dashboard 3 - Tendencias temporales
 def create_dashboard3():
-    # Convertir fechas
+    # Procesamiento de fechas
     df_combined['release_date'] = pd.to_datetime(df_combined['release_date'])
     df_combined['year'] = df_combined['release_date'].dt.year
 
-    # Tendencia por año
+    # Datos agrupados por año y tipo
     yearly_data = df_combined.groupby(['year', 'type']).agg({
         'vote_average': 'mean',
         'popularity': 'mean'
     }).reset_index()
 
+    # Gráfico de líneas para tendencias
     line_fig = px.line(
         yearly_data, x='year', y='vote_average', color='type',
         title="Evolución del Rating Promedio por Año",
@@ -667,7 +665,7 @@ def create_dashboard3():
         ])
     ])
 
-# Página de Contacto
+#* Página de contacto
 def create_contact_page():
     return html.Div([
         html.H1("📧 Contáctanos", className="mb-4"),
@@ -708,7 +706,7 @@ def create_contact_page():
         ])
     ])
 
-# CSS adicional
+# CSS adicional para mejorar la apariencia
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -742,5 +740,6 @@ app.index_string = '''
 </html>
 '''
 
+#* Ejecuta la aplicación
 if __name__ == "__main__":
-    app.run(debug=True, host='127.0.0.1', port=8050)
+    app.run(debug=True, host="120.0.0.1", port=8050)
