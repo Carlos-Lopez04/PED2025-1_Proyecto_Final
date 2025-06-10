@@ -49,7 +49,7 @@ def crear_boton(parent, text, command, color, hover_color):
 def abrir_dashboard():
     """Ejecuta el dashboard como un proceso separado"""
     try:
-        subprocess.Popen([sys.executable, "tmdb_dashboard.py"])
+        subprocess.Popen([sys.executable, "dashboards.py"])
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo abrir el dashboard:\n{e}")
 
