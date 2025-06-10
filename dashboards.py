@@ -1,60 +1,114 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, callback_context
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime
 import numpy as np
 from sqlalchemy import create_engine
 
 # Configuración de la app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
-app.title = "TMDB Dashboard"
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+app.title = "TMDB Dashboard Completo"
 
-# Función para conectar a la base de datos
-def get_data_from_db():
+
+# Función para conectar a la base de datos y obtener TODOS los datos
+def get_all_data_from_db():
     try:
-        #* Cambia los datos de usuario, contraseña y base según corresponda
         engine = create_engine("mysql+mysqlconnector://root:12345678@localhost/tmdb_db")
+
+        # Obtener todas las tablas
         df_combined = pd.read_sql("SELECT * FROM combined_popular ORDER BY popularity DESC", engine)
-        df_movies = pd.read_sql("SELECT * FROM movies_popular ORDER BY popularity DESC", engine)
+        df_movies_popular = pd.read_sql("SELECT * FROM movies_popular ORDER BY popularity DESC", engine)
+        df_movies_top_rated = pd.read_sql("SELECT * FROM top_rated_movies ORDER BY vote_average DESC",
+                                          engine) if table_exists(engine, 'top_rated_movies') else pd.DataFrame()
         df_tv = pd.read_sql("SELECT * FROM tv_popular ORDER BY popularity DESC", engine)
-        return df_combined, df_movies, df_tv
+        df_genres = pd.read_sql("SELECT * FROM genres", engine) if table_exists(engine, 'genres') else pd.DataFrame()
+
+        # Obtener datos con géneros (JOIN)
+        df_with_genres = pd.read_sql("""
+            SELECT c.*, GROUP_CONCAT(g.genre_name) as genres
+            FROM combined_popular c
+            LEFT JOIN content_genres cg ON c.id = cg.content_id AND c.type = cg.content_type
+            LEFT JOIN genres g ON cg.genre_id = g.genre_id
+            GROUP BY c.id, c.type
+            ORDER BY c.popularity DESC
+        """, engine) if table_exists(engine, 'content_genres') else df_combined
+
+        return df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres
+
     except Exception as e:
-        print(f"Error: {e}")
-        # Datos de ejemplo si no hay conexión a BD
+        print(f"Error conectando a BD: {e}")
         return create_sample_data()
 
+
+def table_exists(engine, table_name):
+    try:
+        result = engine.execute(f"SHOW TABLES LIKE '{table_name}'")
+        return result.rowcount > 0
+    except:
+        return False
+
+
 def create_sample_data():
-    # Crear datos de ejemplo para realizar pruebas
+    # Datos de ejemplo mejorados
     np.random.seed(42)
 
-    movies_data = {
+    # Movies populares
+    movies_popular_data = {
         'id': range(1, 51),
-        'title': [f'Movie {i}' for i in range(1, 51)],
-        'vote_average': np.random.uniform(6.0, 9.0, 50),
-        'popularity': np.random.uniform(100, 1000, 50),
+        'title': [f'Popular Movie {i}' for i in range(1, 51)],
+        'vote_average': np.random.uniform(6.0, 8.5, 50),
+        'popularity': np.random.uniform(200, 1000, 50),
         'release_date': pd.date_range('2020-01-01', periods=50, freq='W'),
+        'release_year': np.random.randint(2018, 2024, 50),
         'type': ['movie'] * 50
     }
 
+    # Movies top rated
+    movies_top_data = {
+        'id': range(101, 151),
+        'title': [f'Top Rated Movie {i}' for i in range(1, 51)],
+        'vote_average': np.random.uniform(8.0, 9.5, 50),
+        'popularity': np.random.uniform(100, 500, 50),
+        'release_date': pd.date_range('2015-01-01', periods=50, freq='M'),
+        'release_year': np.random.randint(2015, 2023, 50),
+        'type': ['movie'] * 50
+    }
+
+    # TV Shows
     tv_data = {
-        'id': range(51, 101),
+        'id': range(201, 251),
         'title': [f'TV Show {i}' for i in range(1, 51)],
-        'vote_average': np.random.uniform(6.0, 9.0, 50),
-        'popularity': np.random.uniform(100, 1000, 50),
-        'release_date': pd.date_range('2020-01-01', periods=50, freq='W'),
+        'vote_average': np.random.uniform(6.5, 9.0, 50),
+        'popularity': np.random.uniform(150, 800, 50),
+        'release_date': pd.date_range('2019-01-01', periods=50, freq='2W'),
+        'release_year': np.random.randint(2019, 2024, 50),
         'type': ['tv'] * 50
     }
 
-    df_movies = pd.DataFrame(movies_data)
+    # Géneros
+    genres_data = {
+        'genre_id': [28, 12, 16, 35, 80, 18, 14, 27, 10749, 878],
+        'genre_name': ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Drama', 'Fantasy', 'Horror', 'Romance',
+                       'Sci-Fi']
+    }
+
+    df_movies_popular = pd.DataFrame(movies_popular_data)
+    df_movies_top_rated = pd.DataFrame(movies_top_data)
     df_tv = pd.DataFrame(tv_data)
-    df_combined = pd.concat([df_movies, df_tv], ignore_index=True)
+    df_genres = pd.DataFrame(genres_data)
+    df_combined = pd.concat([df_movies_popular, df_tv], ignore_index=True)
+    df_with_genres = df_combined.copy()
+    df_with_genres['genres'] = np.random.choice(
+        ['Action,Drama', 'Comedy,Romance', 'Horror,Thriller', 'Sci-Fi,Adventure'], len(df_combined))
 
-    return df_combined, df_movies, df_tv
+    return df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres
 
-# Obtener los datos
-df_combined, df_movies, df_tv = get_data_from_db()
+
+# Obtener todos los datos
+df_combined, df_movies_popular, df_movies_top_rated, df_tv, df_genres, df_with_genres = get_all_data_from_db()
 
 # Estilos CSS
 SIDEBAR_STYLE = {
@@ -91,7 +145,7 @@ sidebar = html.Div([
     dbc.Nav([
         dbc.NavLink("🏠 Inicio", href="/", active="exact", className="text-white mb-2",
                     style={"border-radius": "10px", "padding": "10px 15px"}),
-        dbc.NavLink("📊 Dashboard 1", href="/dashboard1", active="exact", className="text-white mb-2",
+        dbc.NavLink("📊 Dashboard Completo", href="/dashboard1", active="exact", className="text-white mb-2",
                     style={"border-radius": "10px", "padding": "10px 15px"}),
         dbc.NavLink("📈 Dashboard 2", href="/dashboard2", active="exact", className="text-white mb-2",
                     style={"border-radius": "10px", "padding": "10px 15px"}),
@@ -102,11 +156,12 @@ sidebar = html.Div([
     ], vertical=True, pills=True),
     html.Hr(style={"border-color": "rgba(255,255,255,0.3)"}),
     html.Div([
-        html.P("💡 Dashboard Mejorado", className="text-center text-white-50 small"),
+        html.P("💡 Dashboard Completo", className="text-center text-white-50 small"),
         html.P(f"Última actualización: {datetime.now().strftime('%d/%m/%Y')}",
-            className="text-center text-white-50 small")
+               className="text-center text-white-50 small")
     ])
 ], style=SIDEBAR_STYLE)
+
 
 # Función para crear los KPI Cards
 def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
@@ -128,78 +183,283 @@ def create_kpi_card(title, value, subtitle, color, icon, percentage=None):
         ])
     ], style=CARD_STYLE)
 
+
 # Página de inicio
 def create_home_page():
     return html.Div([
-        html.H1("🎬 TMDB Analytics Dashboard", className="mb-4"),
+        html.H1("🎬 TMDB Analytics Dashboard Completo", className="mb-4"),
         dbc.Row([
             dbc.Col([
-                create_kpi_card("Total Movies", f"{len(df_movies):,}", "Películas populares", "#6366f1", "🎬", 12.4)
+                create_kpi_card("Movies Populares", f"{len(df_movies_popular):,}", "Películas populares", "#6366f1",
+                                "🎬", 12.4)
             ], width=3),
             dbc.Col([
-                create_kpi_card("Total TV Shows", f"{len(df_tv):,}", "Series populares", "#10b981", "📺", 8.7)
+                create_kpi_card("Movies Top Rated", f"{len(df_movies_top_rated):,}", "Películas mejor calificadas",
+                                "#8b5cf6", "🏆", 8.7)
             ], width=3),
             dbc.Col([
-                create_kpi_card("Avg Rating", f"{df_combined['vote_average'].mean():.1f}", "Promedio general",
-                                "#f59e0b", "⭐", 5.2)
+                create_kpi_card("TV Shows", f"{len(df_tv):,}", "Series populares", "#10b981", "📺", 5.2)
             ], width=3),
             dbc.Col([
-                create_kpi_card("Top Popularity", f"{df_combined['popularity'].max():.0f}", "Máxima popularidad",
-                                "#ef4444", "🔥", 15.3)
+                create_kpi_card("Géneros", f"{len(df_genres):,}", "Géneros disponibles", "#f59e0b", "🎭", 15.3)
             ], width=3),
         ], className="mb-4"),
 
         dbc.Row([
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader("📊 Resumen General"),
+                    dbc.CardHeader("📊 Resumen Completo del Sistema"),
                     dbc.CardBody([
-                        html.P("Este dashboard te permite analizar datos de películas y series de TMDB.",
-                            className="mb-3"),
+                        html.P("Este dashboard incluye TODAS las tablas de la base de datos TMDB:", className="mb-3"),
                         html.Ul([
-                            html.Li("Dashboard 1: Análisis de popularidad y ratings"),
-                            html.Li("Dashboard 2: Comparativa entre películas y series"),
-                            html.Li("Dashboard 3: Tendencias temporales y evolución")
+                            html.Li("📊 Dashboard Completo: Análisis interactivo de todas las tablas"),
+                            html.Li("🎬 Movies Populares: Películas más populares"),
+                            html.Li("🏆 Movies Top Rated: Películas mejor calificadas"),
+                            html.Li("📺 TV Shows: Series más populares"),
+                            html.Li("🎭 Análisis por géneros y años")
+                        ]),
+                        html.Hr(),
+                        html.H6("🆕 Nuevas Características:"),
+                        html.Ul([
+                            html.Li("Filtros interactivos por tipo de contenido"),
+                            html.Li("Filtros por año de lanzamiento"),
+                            html.Li("Análisis de géneros más populares"),
+                            html.Li("Comparativas entre tablas")
                         ])
                     ])
                 ], style=CARD_STYLE)
             ], width=8),
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader("🎯 Top 5 Más Populares"),
+                    dbc.CardHeader("📈 Estadísticas Generales"),
                     dbc.CardBody([
-                        html.Div([
-                            html.P(f"{i + 1}. {row['title'][:30]}{'...' if len(row['title']) > 30 else ''}",
-                                className="mb-1 small")
-                            for i, (_, row) in enumerate(df_combined.head(5).iterrows())
-                        ])
+                        html.P(f"🎬 Movies Populares: {len(df_movies_popular)}", className="mb-2"),
+                        html.P(f"🏆 Movies Top Rated: {len(df_movies_top_rated)}", className="mb-2"),
+                        html.P(f"📺 TV Shows: {len(df_tv)}", className="mb-2"),
+                        html.P(f"🎭 Géneros: {len(df_genres)}", className="mb-2"),
+                        html.Hr(),
+                        html.P(f"📊 Total registros: {len(df_combined)}", className="mb-2 fw-bold"),
+                        html.P(f"⭐ Rating promedio: {df_combined['vote_average'].mean():.1f}", className="mb-2"),
+                        html.P(f"🔥 Popularidad máxima: {df_combined['popularity'].max():.0f}", className="mb-2")
                     ])
                 ], style=CARD_STYLE)
             ], width=4)
         ])
     ])
 
+
+# Dashboard 1 Completo e Interactivo
 def create_dashboard1():
-    # Gráfico de dispersión popularidad vs rating
-    scatter_fig = px.scatter(
-        df_combined, x='vote_average', y='popularity',
-        color='type', size='popularity',
-        title="Popularidad vs Rating",
-        labels={'vote_average': 'Rating Promedio', 'popularity': 'Popularidad'},
-        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
-    )
+    # Obtener años únicos para el filtro
+    all_years = sorted(df_combined['release_year'].dropna().unique()) if 'release_year' in df_combined.columns else [
+        2020, 2021, 2022, 2023]
+
+    return html.Div([
+        html.H1("📊 Dashboard Completo - Análisis Interactivo", className="mb-4"),
+
+        # KPIs dinámicos
+        dbc.Row([
+            dbc.Col([
+                create_kpi_card("Movies Populares", f"{len(df_movies_popular)}", "Películas populares", "#6366f1", "🎬")
+            ], width=3),
+            dbc.Col([
+                create_kpi_card("Movies Top Rated", f"{len(df_movies_top_rated)}", "Mejor calificadas", "#8b5cf6", "🏆")
+            ], width=3),
+            dbc.Col([
+                create_kpi_card("TV Shows", f"{len(df_tv)}", "Series populares", "#10b981", "📺")
+            ], width=3),
+            dbc.Col([
+                create_kpi_card("Géneros", f"{len(df_genres)}", "Géneros disponibles", "#f59e0b", "🎭")
+            ], width=3),
+        ], className="mb-4"),
+
+        # Controles interactivos
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("🎛️ Controles Interactivos"),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Tipo de Contenido:", className="fw-bold"),
+                                dcc.Dropdown(
+                                    id='content-type-filter',
+                                    options=[
+                                        {'label': 'Todos', 'value': 'all'},
+                                        {'label': '🎬 Movies Populares', 'value': 'movie_popular'},
+                                        {'label': '🏆 Movies Top Rated', 'value': 'movie_top_rated'},
+                                        {'label': '📺 TV Shows', 'value': 'tv'}
+                                    ],
+                                    value='all',
+                                    style={'marginBottom': '10px'}
+                                )
+                            ], width=6),
+                            dbc.Col([
+                                html.Label("Año de Lanzamiento:", className="fw-bold"),
+                                dcc.Dropdown(
+                                    id='year-filter',
+                                    options=[{'label': 'Todos los años', 'value': 'all'}] +
+                                            [{'label': str(year), 'value': year} for year in all_years],
+                                    value='all',
+                                    style={'marginBottom': '10px'}
+                                )
+                            ], width=6)
+                        ])
+                    ])
+                ], style=CARD_STYLE)
+            ], width=12)
+        ], className="mb-4"),
+
+        # Gráficos principales
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("📊 Análisis de Popularidad vs Rating"),
+                    dbc.CardBody([
+                        dcc.Graph(id='interactive-scatter-plot')
+                    ])
+                ], style=CARD_STYLE)
+            ], width=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("🎭 Distribución por Géneros"),
+                    dbc.CardBody([
+                        dcc.Graph(id='genre-distribution')
+                    ])
+                ], style=CARD_STYLE)
+            ], width=4)
+        ]),
+
+        # Segunda fila de gráficos
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("🏆 Top 15 Contenido Seleccionado"),
+                    dbc.CardBody([
+                        dcc.Graph(id='top-content-bar')
+                    ])
+                ], style=CARD_STYLE)
+            ], width=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("📈 Estadísticas por Año"),
+                    dbc.CardBody([
+                        dcc.Graph(id='yearly-stats')
+                    ])
+                ], style=CARD_STYLE)
+            ], width=4)
+        ]),
+
+        # Tercera fila - Tabla interactiva
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("📋 Tabla Detallada del Contenido Filtrado"),
+                    dbc.CardBody([
+                        html.Div(id='detailed-table')
+                    ])
+                ], style=CARD_STYLE)
+            ], width=12)
+        ])
+    ])
+
+
+# Callbacks para interactividad
+@app.callback(
+    [Output('interactive-scatter-plot', 'figure'),
+     Output('genre-distribution', 'figure'),
+     Output('top-content-bar', 'figure'),
+     Output('yearly-stats', 'figure'),
+     Output('detailed-table', 'children')],
+    [Input('content-type-filter', 'value'),
+     Input('year-filter', 'value')]
+)
+def update_dashboard(content_type, year_filter):
+    # Filtrar datos según selección
+    if content_type == 'all':
+        filtered_data = df_combined.copy()
+        color_col = 'type'
+        title_suffix = "Todo el Contenido"
+    elif content_type == 'movie_popular':
+        filtered_data = df_movies_popular.copy()
+        color_col = None
+        title_suffix = "Movies Populares"
+    elif content_type == 'movie_top_rated' and not df_movies_top_rated.empty:
+        filtered_data = df_movies_top_rated.copy()
+        color_col = None
+        title_suffix = "Movies Top Rated"
+    elif content_type == 'tv':
+        filtered_data = df_tv.copy()
+        color_col = None
+        title_suffix = "TV Shows"
+    else:
+        filtered_data = df_combined.copy()
+        color_col = 'type'
+        title_suffix = "Todo el Contenido"
+
+    # Filtrar por año
+    if year_filter != 'all' and 'release_year' in filtered_data.columns:
+        filtered_data = filtered_data[filtered_data['release_year'] == year_filter]
+
+    # Gráfico de dispersión
+    if color_col and color_col in filtered_data.columns:
+        scatter_fig = px.scatter(
+            filtered_data.head(100), x='vote_average', y='popularity',
+            color=color_col, size='popularity',
+            title=f"Popularidad vs Rating - {title_suffix}",
+            labels={'vote_average': 'Rating Promedio', 'popularity': 'Popularidad'},
+            hover_data=['title'] if 'title' in filtered_data.columns else None
+        )
+    else:
+        scatter_fig = px.scatter(
+            filtered_data.head(100), x='vote_average', y='popularity',
+            size='popularity',
+            title=f"Popularidad vs Rating - {title_suffix}",
+            labels={'vote_average': 'Rating Promedio', 'popularity': 'Popularidad'},
+            hover_data=['title'] if 'title' in filtered_data.columns else None
+        )
+
     scatter_fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font_color='#1f2937'
     )
 
-    # Gráfico de barras con el top 10 de Series
-    top_10 = df_combined.head(10)
+    # Gráfico de géneros (simulado si no hay datos reales)
+    if not df_genres.empty and 'genres' in df_with_genres.columns:
+        # Procesar géneros reales
+        genre_counts = {}
+        for genres in df_with_genres['genres'].dropna():
+            for genre in str(genres).split(','):
+                genre = genre.strip()
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+
+        genre_df = pd.DataFrame(list(genre_counts.items()), columns=['Genre', 'Count'])
+        genre_df = genre_df.head(10)
+    else:
+        # Géneros simulados
+        genre_df = pd.DataFrame({
+            'Genre': ['Action', 'Drama', 'Comedy', 'Thriller', 'Romance'],
+            'Count': [25, 20, 18, 15, 12]
+        })
+
+    genre_fig = px.pie(
+        genre_df, values='Count', names='Genre',
+        title="Distribución por Géneros"
+    )
+    genre_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    # Top 15 contenido
+    top_15 = filtered_data.nlargest(15, 'popularity')
     bar_fig = px.bar(
-        top_10, x='popularity', y='title', orientation='h',
-        color='type', title="Top 10 De Las Series Más Populares",
-        color_discrete_map={'movie': '#6366f1', 'tv': '#10b981'}
+        top_15, x='popularity', y='title', orientation='h',
+        title=f"Top 15 - {title_suffix}",
+        color='vote_average' if len(top_15) > 0 else None,
+        color_continuous_scale='viridis'
     )
     bar_fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
@@ -207,53 +467,74 @@ def create_dashboard1():
         font_color='#1f2937',
         yaxis={'categoryorder': 'total ascending'}
     )
-    print(top_10)
 
+    # Estadísticas por año
+    if 'release_year' in filtered_data.columns:
+        yearly_data = filtered_data.groupby('release_year').agg({
+            'vote_average': 'mean',
+            'popularity': 'mean'
+        }).reset_index()
+
+        yearly_fig = px.line(
+            yearly_data, x='release_year', y='vote_average',
+            title=f"Rating Promedio por Año - {title_suffix}",
+            markers=True
+        )
+    else:
+        # Datos simulados
+        yearly_fig = px.line(
+            x=[2020, 2021, 2022, 2023], y=[7.5, 7.8, 7.6, 7.9],
+            title="Rating Promedio por Año"
+        )
+
+    yearly_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='#1f2937'
+    )
+
+    # Tabla detallada
+    table_data = filtered_data.head(20)
+    if not table_data.empty:
+        table = dbc.Table.from_dataframe(
+            table_data[['title', 'vote_average', 'popularity', 'release_date', 'type']].round(2),
+            striped=True, bordered=True, hover=True, responsive=True
+        )
+    else:
+        table = html.P("No hay datos disponibles para los filtros seleccionados.")
+
+    return scatter_fig, genre_fig, bar_fig, yearly_fig, table
+
+
+# Layout principal
+app.layout = html.Div([
+    dcc.Location(id="url"),
+    sidebar,
+    html.Div(id="page-content", style=CONTENT_STYLE)
+])
+
+
+# Callback para navegación
+@app.callback(Output("page-content", "children"), [Input("url", "pathname")])
+def render_page_content(pathname):
+    if pathname == "/":
+        return create_home_page()
+    elif pathname == "/dashboard1":
+        return create_dashboard1()
+    elif pathname == "/dashboard2":
+        return create_dashboard2()  # Mantener el dashboard 2 original
+    elif pathname == "/dashboard3":
+        return create_dashboard3()  # Mantener el dashboard 3 original
+    elif pathname == "/contacto":
+        return create_contact_page()
     return html.Div([
-        html.H1("📊 Dashboard 1 - Análisis de Popularidad", className="mb-4"),
-        dbc.Row([
-            dbc.Col([
-                create_kpi_card("Movies", f"{len(df_movies)}", "Total películas", "#6366f1", "🎬")
-            ], width=4),
-            dbc.Col([
-                create_kpi_card("TV Shows", f"{len(df_tv)}", "Total series", "#10b981", "📺")
-            ], width=4),
-            dbc.Col([
-                create_kpi_card("Avg Rating", f"{df_combined['vote_average'].mean():.1f}", "Rating promedio", "#f59e0b",
-                                "⭐")
-            ], width=4),
-        ], className="mb-4"),
-
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        dcc.Graph(id='scatter-graph', figure=scatter_fig)
-                    ])
-                ], style=CARD_STYLE)
-            ], width=6),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        dcc.Graph(id='bar-graph', figure=bar_fig),
-                        html.H5("Top 10 Más Populares", className="mb-3"),
-                        html.P("Selecciona una película o serie para ver más información:", className="small"),
-                        dcc.Dropdown(
-                            id='top10-dropdown',
-                            options=[{'label': row['title'], 'value': row['id']} for _, row in top_10.iterrows()],
-                            placeholder='Selecciona una película o serie del Top 10'
-                        ),
-                        html.Div(id='top10-info', className="mt-3")
-                    ])
-                ], style=CARD_STYLE)
-            ], width=6)
-        ])
+        html.H1("404: Página no encontrada", className="text-danger"),
+        html.P("La página que buscas no existe.")
     ])
 
 
-#Crear el dashboard #2
+# Funciones de los otros dashboards (mantener las originales)
 def create_dashboard2():
-    
     # Gráfico circular de distribución
     type_counts = df_combined['type'].value_counts()
     pie_fig = px.pie(
@@ -277,11 +558,10 @@ def create_dashboard2():
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font_color='#1f2937'
-        
     )
 
-    #Estadisticas
-    movie_stats = df_movies['vote_average'].describe()
+    # Estadísticas
+    movie_stats = df_movies_popular['vote_average'].describe()
     tv_stats = df_tv['vote_average'].describe()
 
     return html.Div([
@@ -317,13 +597,13 @@ def create_dashboard2():
         ])
     ])
 
-#Dashboard #3
+
 def create_dashboard3():
     # Convertir fechas
     df_combined['release_date'] = pd.to_datetime(df_combined['release_date'])
     df_combined['year'] = df_combined['release_date'].dt.year
 
- # Tendencia por año
+    # Tendencia por año
     yearly_data = df_combined.groupby(['year', 'type']).agg({
         'vote_average': 'mean',
         'popularity': 'mean'
@@ -415,61 +695,18 @@ def create_contact_page():
                 dbc.Card([
                     dbc.CardHeader("📈 Estadísticas del Sistema"),
                     dbc.CardBody([
-                        html.P(f"🎬 Movies: {len(df_movies)}", className="mb-2"),
+                        html.P(f"🎬 Movies Populares: {len(df_movies_popular)}", className="mb-2"),
+                        html.P(f"🏆 Movies Top Rated: {len(df_movies_top_rated)}", className="mb-2"),
                         html.P(f"📺 TV Shows: {len(df_tv)}", className="mb-2"),
-                        html.P(f"📊 Total registros: {len(df_combined)}", className="mb-2"),
+                        html.P(f"🎭 Géneros: {len(df_genres)}", className="mb-2"),
+                        html.Hr(),
+                        html.P(f"📊 Total registros: {len(df_combined)}", className="mb-2 fw-bold"),
                         html.P(f"📅 Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M')}", className="mb-2")
                     ])
                 ], style=CARD_STYLE)
             ], width=4)
         ])
     ])
-
-# Layout principal
-app.layout = html.Div([
-    dcc.Location(id="url"),
-    sidebar,
-    html.Div(id="page-content", style=CONTENT_STYLE)
-])
-
-# Callback para navegación
-@app.callback(Output("page-content", "children"), [Input("url", "pathname")])
-def render_page_content(pathname):
-    if pathname == "/":
-        return create_home_page()
-    elif pathname == "/dashboard1":
-        return create_dashboard1()
-    elif pathname == "/dashboard2":
-        return create_dashboard2()
-    elif pathname == "/dashboard3":
-        return create_dashboard3()
-    elif pathname == "/contacto":
-        return create_contact_page()
-    return html.Div([
-        html.H1("404: Página no encontrada", className="text-danger"),
-        html.P("La página que buscas no existe.")
-    ])
-
-#Callback para info de top10
-@app.callback(
-    Output('top10-info', 'children'),[Input('top10-dropdown', 'value')])
-def show_top10_info(selected_id):
-    if selected_id is None:
-        return ""
-    top_10 = df_combined.head(10)
-    row = top_10[top_10['id'] == selected_id]
-    if row.empty:
-        return html.P("No se encontró información.")
-    row = row.iloc[0]
-    return dbc.Card([
-        dbc.CardBody([
-            html.H4(row['title']),
-            html.P(f"Tipo: {row['type']}"),
-            html.P(f"Popularidad: {row['popularity']:.2f}"),
-            html.P(f"Rating: {row['vote_average']:.2f}"),
-            html.P(f"Fecha de estreno: {row['release_date']}"),
-        ])
-    ], style=CARD_STYLE)
 
 # CSS adicional
 app.index_string = '''
